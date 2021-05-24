@@ -13,7 +13,7 @@ class NicoChatCss3View {
    */
   static buildChatDom (chat, type, size, cssText, document = window.document) {
     const span = document.createElement('span');
-    const ver = chat.commentVer;
+    const ver = 'html5';
     const className = ['nicoChat', 'hidden', type, size];
     if (ver === 'html5') {
       className.push(ver);

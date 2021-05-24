@@ -1,8 +1,8 @@
 import {textUtil} from '../text/textUtil';
 import {netUtil} from './netUtil';
+import * as _ from "lodash"
 
 const PRODUCT = 'TEST';
-const _ = window._;
 //===BEGIN===
 
 const CacheStorage = (() => {

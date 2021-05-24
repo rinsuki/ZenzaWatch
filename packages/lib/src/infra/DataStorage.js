@@ -2,8 +2,8 @@ import {Emitter} from '../Emitter';
 import {objUtil} from './objUtil';
 import {Observable} from './Observable';
 import {bounce} from './bounce';
-import {dimport} from './dimport';
-import {global} from '../../../../src/ZenzaWatchIndex';
+// import {dimport} from './dimport';
+// import {global} from '../../../../src/ZenzaWatchIndex';
 //===BEGIN===
 //@require Observable
 //@require bounce

@@ -57,5 +57,6 @@ export {
   global,
   ENV,
   VER,
-  dll
+  dll,
+  Config,
 };

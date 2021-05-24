@@ -72,18 +72,7 @@ const AsyncEmitter = (() => {
 util.fullscreen = Fullscreen;
 
 
-const dummyConsole = {};
-window.console.timeLog || (window.console.timeLog = () => {});
-for (const k of Object.keys(window.console)) {
-  if (typeof window.console[k] !== 'function') {continue;}
-  dummyConsole[k] = _.noop;
-}
-['assert', 'error', 'warn', 'nicoru'].forEach(k =>
-  dummyConsole[k] = window.console[k].bind(window.console));
-
-console = Config.props.debug ? window.console : dummyConsole;
-Config.onkey('debug', v => console = v ? window.console : dummyConsole);
-
+console = window.console
 
 
 //@require css
