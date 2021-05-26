@@ -1,3 +1,5 @@
+import { NicoCommentCss3PlayerView } from "../packages/zenza/src/commentLayer/NicoCommentCss3PlayerView"
+
 export class NicoCommentPlayer {
     constructor(params: {
         filter: {
@@ -10,6 +12,7 @@ export class NicoCommentPlayer {
         debug: boolean,
         playbackRate: number,
     })
+    _view: NicoCommentCss3PlayerView
 
     appendTo(node: Node)
     setComment(data: string, options: {format: "json"})
