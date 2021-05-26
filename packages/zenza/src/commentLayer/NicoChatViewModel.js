@@ -16,7 +16,11 @@ import {CommentLayer} from './CommentLayer';
  */
 class NicoChatViewModel {
   static create(nicoChat, offScreen) {
-    return new HTML5NicoChatViewModel(nicoChat, offScreen);
+    if (nicoChat.commentVer === 'html5') {
+      return new HTML5NicoChatViewModel(nicoChat, offScreen);
+
+    }
+    return new FlashNicoChatViewModel(nicoChat, offScreen);
   }
 
 
