@@ -24,7 +24,7 @@ class NicoChat {
       isReverse: false,
       isPatissier: false,
       fontCommand: '',
-      commentVer: 'flash',
+      commentVer: 'html5',
       currentTime: 0,
       hasDurationSet: false,
       isMine: false,
@@ -169,7 +169,7 @@ class NicoChat {
     props.size = NicoChat.SIZE.MEDIUM;
     props.type = NicoChat.TYPE.NAKA;
     props.duration = NicoChat.DURATION.NAKA;
-    props.commentVer = 'flash';
+    props.commentVer = 'html5';
     props.nicoru = data.nicoru || 0;
     props.valhalla = data.valhalla;
     props.lastNicoruDate = data.last_nicoru_date || null;
@@ -224,7 +224,7 @@ class NicoChat {
       isReverse: false,
       isPatissier: false,
       fontCommand: '',
-      commentVer: 'flash',
+      commentVer: 'html5',
       nicoru: 0,
       currentTime: 0,
       hasDurationSet: false
