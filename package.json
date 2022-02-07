@@ -10,12 +10,8 @@
   "dependencies": {},
   "devDependencies": {
     "jquery": "^3.3.1",
-    "jsdom": "^11.6.2",
     "lit-html": "^1.1.0",
-    "lodash": "^4.17.5",
-    "mocha": "^3.5.3",
-    "mock-local-storage": "^1.0.5",
-    "power-assert": "^1.4.4"
+    "lodash": "^4.17.5"
   },
   "directories": {
     "test": "test/"
