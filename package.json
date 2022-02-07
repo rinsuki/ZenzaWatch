@@ -1,10 +1,11 @@
 {
-  "name": "ZenzaWatch",
-  "description": "niconico HTML5 Player",
+  "name": "@rinsuki/libzenzawatch",
+  "description": "niconico HTML5 comment renderer based on ZenzaWatch",
   "version": "0.0.0",
-  "author": "segabito",
+  "author": "rinsuki",
+  "contributors": ["segabito"],
   "bugs": {
-    "url": "https://github.com/segabito/ZenzaWatch/issues"
+    "url": "https://github.com/rinsuki/libZenzaWatch/issues"
   },
   "dependencies": {},
   "devDependencies": {
