@@ -1,17 +1,41 @@
 import {Emitter} from '../../../lib/src/Emitter';
 import {textUtil} from '../../../lib/src/text/textUtil';
+import { NicoChat } from './NicoChat';
+import { NicoChatGroup } from './NicoChatGroup';
 
 //===BEGIN===
 
+type JumpReturnValue = ReturnType<typeof NicoScriptParser.parseジャンプ>
+
+type TAPJump<T extends JumpReturnValue["type"] = JumpReturnValue["type"]> = { type: T, params: JumpReturnValue }
+
+type TypeAndParams =
+  | { type: "DEFAULT", params?: undefined }
+  | { type: "REVERSE", params: ReturnType<typeof NicoScriptParser.parse逆> }
+  | { type: "MARKER", params: ReturnType<typeof NicoScriptParser.parseジャンプマーカー> }
+  | { type: "REPLACE", params: ReturnType<typeof NicoScriptParser.parse置換 | typeof NicoScriptParser.parseReplace> }
+  | { type: "PIPE", params: ReturnType<typeof NicoScriptParser.parseNiwango> }
+  | { type: "COLOR", params: { color: string } }
+  | TAPJump
+
+type NicoScriptTypeToParams = {
+  [key in TypeAndParams["type"] | JumpReturnValue["type"]]: 
+    key extends JumpReturnValue["type"]
+      ? JumpReturnValue | Extract<TypeAndParams, {type: key}>["params"]
+      : Extract<TypeAndParams, {type: key}>["params"]
+}
+
+type ParsedNicos = { id: number } & TypeAndParams
+
+type Nicos = ReturnType<typeof NicoScriptParser.parseNicos>
+
 class NicoScriptParser {
+  static _count = 1
   static get parseId() {
-    if (!NicoScriptParser._count) {
-      NicoScriptParser._count = 1;
-    }
     return NicoScriptParser._count++;
   }
 
-  static parseNiwango(lines) {
+  static parseNiwango(lines: string[]) {
     // 構文はいったん無視して、対応できる命令だけ拾っていく。
     // ニワン語のフル実装は夢
     let type, params, m;
@@ -20,23 +44,22 @@ class NicoScriptParser {
       const text = lines[i];
       const id = NicoScriptParser.parseId;
       if ((m = /^\/?replace\((.*?)\)/.exec(text)) !== null) {
-        type = 'REPLACE';
         params = NicoScriptParser.parseReplace(m[1]);
-        result.push({id, type, params});
+        result.push({id, type: "REPLACE" as const, params});
       } else if ((m = /^\/?commentColor\s*=\s*0x([0-9a-f]{6})/i.exec(text)) !== null) {
-        result.push({id, type: 'COLOR', params: {color: '#' + m[1]}});
+        result.push({id, type: 'COLOR' as const, params: {color: '#' + m[1]}});
       } else if ((m = /^\/?seek\((.*?)\)/i.exec(text)) !== null) {
         params = NicoScriptParser.parseSeek(m[1]);
-        result.push({id, type: 'SEEK', params});
+        result.push({id, type: 'SEEK' as const, params});
       }
     }
     return result;
   }
 
 
-  static parseParams(str) {
+  static parseParams(str: string) {
     // 雑なパース
-    let result = {}, v = '', lastC = '', key, isStr = false, quot = '';
+    let result: {[key: string]: string} = {}, v = '', lastC = '', key = "", isStr = false, quot = '';
     for (let i = 0, len = str.length; i < len; i++) {
       let c = str.charAt(i);
       switch (c) {
@@ -99,7 +122,7 @@ class NicoScriptParser {
     return result;
   }
 
-  static parseNicosParams(str) {
+  static parseNicosParams(str: string) {
     // 雑なパース
     let result = [], v = '', lastC = '', quot = '';
     for (let i = 0, len = str.length; i < len; i++) {
@@ -171,47 +194,46 @@ class NicoScriptParser {
     return result;
   }
 
-  static parseNicos(text) {
+  static parseNicos(text: string): ParsedNicos {
     text = text.trim();
     const text1 = (text || '').split(/[ 　:：]+/)[0]; // eslint-disable-line
-    let params;
-    let type;
+    let typeAndParams: TypeAndParams
+
     switch (text1) {
       case '@デフォルト':
       case '＠デフォルト':
-        type = 'DEFAULT';
+        typeAndParams = {type: 'DEFAULT'};
         break;
       case '@逆':
       case '＠逆':
-        type = 'REVERSE';
-        params = NicoScriptParser.parse逆(text);
+        typeAndParams = {type: 'REVERSE', params: NicoScriptParser.parse逆(text)};
         break;
       case '@ジャンプ':
-      case '＠ジャンプ':
-        params = NicoScriptParser.parseジャンプ(text);
-        type = params.type;
+      case '＠ジャンプ': {
+        const params = NicoScriptParser.parseジャンプ(text);
+        typeAndParams = { params, type: params.type }
+      }
         break;
       case '@ジャンプマーカー':
       case '＠ジャンプマーカー':
-        type = 'MARKER'; //@ジャンプマーカー：ループ
-        params = NicoScriptParser.parseジャンプマーカー(text);
+        typeAndParams = {type: 'MARKER', params: NicoScriptParser.parseジャンプマーカー(text)};
         break;
       default:
         if (text.indexOf('@置換') === 0 || text.indexOf('＠置換') === 0) {
-          type = 'REPLACE';
-          params = NicoScriptParser.parse置換(text);
+          typeAndParams = {type: 'REPLACE', params: NicoScriptParser.parse置換(text)};
         } else {
-          type = 'PIPE';
-          let lines = NicoScriptParser.splitLines(text);
-          params = NicoScriptParser.parseNiwango(lines);
+          typeAndParams = {
+            type: 'PIPE',
+            params: NicoScriptParser.parseNiwango(NicoScriptParser.splitLines(text))
+          }
         }
     }
 
     const id = NicoScriptParser.parseId;
-    return {id, type, params};
+    return {id, ...typeAndParams};
   }
 
-  static splitLines(str) {
+  static splitLines(str: string) {
     let result = [], v = '', lastC = '', isStr = false, quot = '';
     for (let i = 0, len = str.length; i < len; i++) {
       let c = str.charAt(i);
@@ -258,7 +280,7 @@ class NicoScriptParser {
   }
 
 
-  static parseReplace(str) {
+  static parseReplace(str: string) {
     const result = NicoScriptParser.parseParams(str);
 
     if (!result) {
@@ -274,7 +296,7 @@ class NicoScriptParser {
   }
 
 
-  static parseSeek(str) {
+  static parseSeek(str: string) {
     const result = NicoScriptParser.parseParams(str);
     if (!result) {
       return null;
@@ -285,7 +307,7 @@ class NicoScriptParser {
   }
 
 
-  static parse置換(str) {
+  static parse置換(str: string) {
     const tmp = NicoScriptParser.parseNicosParams(str);
     //＠置換 キーワード 置換後 置換範囲 投コメ 一致条件
     //＠置換 "И"       "██" 単       投コメ
@@ -307,7 +329,7 @@ class NicoScriptParser {
   }
 
 
-  static parse逆(str) {
+  static parse逆(str: string) {
     const tmp = NicoScriptParser.parseNicosParams(str);
     /* eslint-disable */
     //＠逆　投コメ
@@ -320,28 +342,28 @@ class NicoScriptParser {
   }
 
 
-  static parseジャンプ(str) {
+  static parseジャンプ(str: string) {
     //＠ジャンプ ジャンプ先 メッセージ 再生開始位置 戻り秒数 戻りメッセージ
     const tmp = NicoScriptParser.parseNicosParams(str);
     const target = tmp[1] || '';
-    let type = 'JUMP';
+    let type: "JUMP" | "SEEK" | "SEEK_MARKER" = 'JUMP';
     let time = 0;
     let m;
     if ((m = /^#(\d+):(\d+)$/.exec(target)) !== null) {
       type = 'SEEK';
-      time = m[1] * 60 + m[2] * 1;
+      time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) * 1;
     } else if ((m = /^#(\d+):(\d+\.\d+)$/.exec(target)) !== null) {
       type = 'SEEK';
-      time = m[1] * 60 + m[2] * 1;
+      time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) * 1;
     } else if ((m = /^(#|＃)(.+)/.exec(target)) !== null) {
       type = 'SEEK_MARKER';
-      time = m[2];
+      time = parseFloat(m[2]);
     }
     return {target, type, time};
   }
 
 
-  static parseジャンプマーカー(str) {
+  static parseジャンプマーカー(str: string) {
     const tmp = NicoScriptParser.parseNicosParams(str);
     const name = tmp[0].split(/[:： 　]/)[1]; // eslint-disable-line
     return {name};
@@ -349,8 +371,22 @@ class NicoScriptParser {
 
 }
 
+function runtimeKeyofByKeyInObj<Obj extends {[key: string | number | symbol]: unknown}>(key: string | number | symbol, obj: Obj): key is keyof Obj {
+  return key in obj
+}
 
-class NicoScripter extends Emitter {
+class NicoScripter extends Emitter<{
+  command: ["nicosSeek", number],
+}> {
+  _hasSort = false;
+  _list: NicoChat[] = [];
+  _eventScript: {p: ParsedNicos, nicos: NicoChat}[] = [];
+  _nextVideo: string | null = null;
+  _marker: {[key: number | string]: number} = {};
+  _inviewEvents: {[key: string]: boolean | undefined} = {};
+  _currentTime = 0;
+  _eventId = 0;
+
   constructor() {
     super();
     this.reset();
@@ -367,7 +403,7 @@ class NicoScripter extends Emitter {
     this._eventId = 0;
   }
 
-  add(nicoChat) {
+  add(nicoChat: NicoChat) {
     this._hasSort = false;
     this._list.push(nicoChat);
   }
@@ -439,13 +475,13 @@ class NicoScripter extends Emitter {
     });
   }
 
-  apply(group) {
+  apply(group: NicoChat[] | NicoChatGroup) {
     this._sort();
-    const assigned = {};
+    const assigned: {[key: number]: boolean} = {};
 
     // どうせ全動画の1%も使われていないので
     // 最適化もへったくれもない
-    const eventFunc = {
+    const eventFunc: {[key in keyof NicoScriptTypeToParams]?: (p: ParsedNicos & { params: NicoScriptTypeToParams[key] }, nicos: NicoChat) => void} = {
       'JUMP': (p, nicos) => {
         console.log('@ジャンプ: ', p, nicos);
         const target = p.params.target;
@@ -475,8 +511,8 @@ class NicoScripter extends Emitter {
       }
     };
 
-    const applyFunc = {
-      DEFAULT(nicoChat, nicos) {
+    const applyFunc: {[key in keyof NicoScriptTypeToParams]?: (nc: NicoChat, nicos: NicoChat, params: NicoScriptTypeToParams[key]) => void} = {
+      DEFAULT(nicoChat: NicoChat, nicos) {
         const nicosColor = nicos.color;
         const hasColor = nicoChat.hasColorCommand;
         if (nicosColor && !hasColor) {
@@ -496,13 +532,13 @@ class NicoScripter extends Emitter {
         }
 
       },
-      COLOR(nicoChat, nicos, params) {
+      COLOR(nicoChat: NicoChat, nicos, params) {
         const hasColor = nicoChat.hasColorCommand;
         if (!hasColor) {
           nicoChat.color = params.color;
         }
       },
-      REVERSE(nicoChat, nicos, params) {
+      REVERSE(nicoChat: NicoChat, nicos, params) {
         if (params.target === '全') {
           nicoChat.isReverse = true;
         } else if (params.target === '投コメ') {
@@ -515,7 +551,7 @@ class NicoScripter extends Emitter {
           }
         }
       },
-      REPLACE(nicoChat, nicos, params) {
+      REPLACE(nicoChat: NicoChat, nicos, params) {
         if (!params) {
           return;
         }
@@ -547,7 +583,7 @@ class NicoScripter extends Emitter {
         }
         nicoChat.text = text;
 
-        const nicosColor = nicos.clor;
+        const nicosColor = nicos.color;
         const hasColor = nicoChat.hasColorCommand;
         if (nicosColor && !hasColor) {
           nicoChat.color = nicosColor;
@@ -566,12 +602,11 @@ class NicoScripter extends Emitter {
         }
 
       },
-      PIPE(nicoChat, nicos, lines) {
+      PIPE(nicoChat: NicoChat, nicos, lines) {
         lines.forEach(line => {
-          const type = line.type;
-          const f = applyFunc[type];
+          const f = applyFunc[line.type];
           if (f) {
-            f(nicoChat, nicos, line.params);
+            f(nicoChat, nicos, line.params as any);
           }
         });
       }
@@ -587,22 +622,24 @@ class NicoScripter extends Emitter {
         nicos.duration = 99999;
       }
 
-      const ev = eventFunc[p.type];
-      if (ev) {
-        return ev(p, nicos);
-      }
-      else if (p.type === 'PIPE') {
+      const ev = eventFunc[p.type]
+      if (ev != null) {
+        // TypeScript コンパイラが複雑すぎると文句を言うので any にして誤魔化す
+        const eev = ev as any
+        eev(p, nicos)
+        return
+      } else if (p.type === 'PIPE') {
         p.params.forEach(line => {
           const type = line.type;
-          const ev = eventFunc[type];
-          if (ev) {
-            return ev(line, nicos);
+          const ev = eventFunc[line.type];
+          if (ev != null) {
+            return ev(line as any, nicos);
           }
         });
       }
 
 
-      const func = applyFunc[p.type];
+      const func = applyFunc[p.type] as (nicoChat: NicoChat, nicos: NicoChat, params: NicoScriptTypeToParams[keyof NicoScriptTypeToParams]) => void;
       if (!func) {
         return;
       }
@@ -610,7 +647,7 @@ class NicoScripter extends Emitter {
       const beginTime = nicos.beginTime;
       const endTime = beginTime + nicos.duration;
 
-      (group.members ? group.members : group).forEach(nicoChat => {
+      ("members" in group ? group.members : group).forEach(nicoChat => {
         if (nicoChat.isNicoScript) {
           return;
         }
@@ -619,7 +656,7 @@ class NicoScripter extends Emitter {
         if (beginTime > ct || endTime < ct) {
           return;
         }
-        func(nicoChat, nicos, p.params);
+        func(nicoChat, nicos, p.params as any);
       });
     });
   }

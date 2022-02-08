@@ -1,13 +1,33 @@
 import {Emitter} from '../../../lib/src/Emitter';
-import {NicoChatFilter} from './NicoChatFilter';
+import { NicoChat } from './NicoChat';
+import {NicoChatFilter, SHARED_NG_LEVEL_TYPE} from './NicoChatFilter';
 
 //===BEGIN===
-class NicoChatGroup extends Emitter {
-  constructor(...args) {
+
+export type NicoChatGroupParams = {
+  nicoChatFilter: NicoChatFilter,
+}
+class NicoChatGroup extends Emitter<{
+  addChat: [NicoChat],
+  addChatArray: [NicoChat[]],
+  change: [{
+    chat: NicoChat | null,
+    group: NicoChatGroup,
+  }],
+}> {
+  _type: unknown
+  _nicoChatFilter!: NicoChatFilter
+  _members: NicoChat[] = []
+  _filteredMembers: NicoChat[] = []
+  _currentTime?: number
+  _sharedNgLevel?: SHARED_NG_LEVEL_TYPE
+  
+  constructor(...args: Parameters<NicoChatGroup["initialize"]>) {
     super();
     this.initialize(...args);
   }
-  initialize(type, params) {
+
+  initialize(type: unknown, params: NicoChatGroupParams) {
     this._type = type;
 
     this._nicoChatFilter = params.nicoChatFilter;
@@ -19,9 +39,9 @@ class NicoChatGroup extends Emitter {
     this._members = [];
     this._filteredMembers = [];
   }
-  addChatArray(nicoChatArray) {
+  addChatArray(nicoChatArray: NicoChat[]) {
     let members = this._members;
-    let newMembers = [];
+    let newMembers: NicoChat[] = [];
     for (const nicoChat of nicoChatArray) {
       newMembers.push(nicoChat);
       members.push(nicoChat);
@@ -34,7 +54,7 @@ class NicoChatGroup extends Emitter {
       this.emit('addChatArray', newMembers);
     }
   }
-  addChat(nicoChat) {
+  addChat(nicoChat: NicoChat) {
     this._members.push(nicoChat);
     nicoChat.group = this;
 
@@ -51,7 +71,7 @@ class NicoChatGroup extends Emitter {
     return this._filteredMembers = this._nicoChatFilter.applyFilter(this._members);
   }
   get nonFilteredMembers() { return this._members; }
-  onChange(e) {
+  onChange(e: NicoChat | null) {
     console.log('NicoChatGroup.onChange: ', e);
     this._filteredMembers = [];
     this.emit('change', {
@@ -71,13 +91,13 @@ class NicoChatGroup extends Emitter {
     //   m[i].currentTime = sec;
     // }
   }
-  setSharedNgLevel(level) {
+  setSharedNgLevel(level: SHARED_NG_LEVEL_TYPE) {
     if (NicoChatFilter.SHARED_NG_LEVEL[level] && this._sharedNgLevel !== level) {
       this._sharedNgLevel = level;
       this.onChange(null);
     }
   }
-  includes(nicoChat) {
+  includes(nicoChat: NicoChat) {
     const uno = nicoChat.uniqNo;
     return this._members.find(m => m.uniqNo === uno);
   }

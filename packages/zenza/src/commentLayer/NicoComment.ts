@@ -1,11 +1,9 @@
 import {Emitter} from '../../../lib/src/Emitter';
 import {NicoChatFilter} from './NicoChatFilter';
-import {SlotLayoutWorker} from './SlotLayoutWorker';
-import {NicoChatGroupViewModel} from './NicoChatGroupViewModel';
 import {NicoChat} from './NicoChat';
 import {NicoChatGroup} from './NicoChatGroup';
 import {NicoScripter} from './NicoScripter';
-import {global, Config} from '../../../../src/ZenzaWatchIndex';
+import {global} from '../../../../src/ZenzaWatchIndex';
 import {sleep} from '../../../lib/src/infra/sleep';
 import {textUtil} from '../../../lib/src/text/textUtil';
 import {CommentLayer} from './CommentLayer';

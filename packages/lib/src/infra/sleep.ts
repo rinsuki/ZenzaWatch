@@ -1,10 +1,9 @@
-
 //===BEGIN===
 const sleep = Object.assign(function(time = 0) {
     return new Promise(res => setTimeout(res, time));
   },{
   idle: (() => {
-    if (window.requestIdleCallback) {
+    if (window.requestIdleCallback != null) {
       return () => new Promise(res => requestIdleCallback(res));
     }
     return () => new Promise(res => setTimeout(res, 0));

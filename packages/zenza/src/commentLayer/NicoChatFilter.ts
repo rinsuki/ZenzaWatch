@@ -6,7 +6,7 @@ import {NicoChat} from "./NicoChat"
 
 //===BEGIN===
 
-type SHARED_NG_LEVEL_TYPE = typeof NicoChatFilter.SHARED_NG_LEVEL[keyof typeof NicoChatFilter.SHARED_NG_LEVEL]
+export type SHARED_NG_LEVEL_TYPE = typeof NicoChatFilter.SHARED_NG_LEVEL[keyof typeof NicoChatFilter.SHARED_NG_LEVEL]
 
 export type NicoChatFilterParams = {
   sharedNgLevel?: SHARED_NG_LEVEL_TYPE
@@ -15,6 +15,9 @@ export type NicoChatFilterParams = {
   fork0?: boolean
   fork1?: boolean
   fork2?: boolean
+  wordFilter?: string | string[]
+  userIdFilter?: string | string[]
+  commandFilter?: string | string[]
   /** 正規表現 */
   wordRegFilter?: string
   /** wordRegFilter の正規表現のフラグ */
@@ -51,8 +54,8 @@ class NicoChatFilter extends Emitter<{
   _enable: boolean
   _wordReg?: RegExp
   _wordRegReg?: RegExp
-  _userIdReg?: unknown
-  _commandReg?: unknown
+  _userIdReg?: RegExp
+  _commandReg?: RegExp
   _flags?: string
 
   constructor(params: NicoChatFilterParams) {
@@ -123,7 +126,7 @@ class NicoChatFilter extends Emitter<{
     this._wordFilterList = [...new Set(this._wordFilterList)];
     let after = this._wordFilterList.join('\n');
     if (before === after) { return; }
-    this._wordReg = null;
+    this._wordReg = undefined;
     this._onChange();
   }
   set wordFilterList(list: string | string[]) {
@@ -169,7 +172,7 @@ class NicoChatFilter extends Emitter<{
     this._userIdFilterList = [...new Set(this._userIdFilterList)];
     const after = this._userIdFilterList.join('\n');
     if (before === after) { return; }
-    this._userIdReg = null;
+    this._userIdReg = undefined;
     this._onChange();
   }
   set userIdFilterList(list_: string | string[]) {
@@ -185,7 +188,7 @@ class NicoChatFilter extends Emitter<{
     let after = tmp.join('\n');
 
     if (before === after) { return; }
-    this._userIdReg = null;
+    this._userIdReg = undefined;
     this._userIdFilterList = tmp;
     this._onChange();
   }
@@ -198,7 +201,7 @@ class NicoChatFilter extends Emitter<{
     this._commandFilterList = [...new Set(this._commandFilterList)];
     let after = this._commandFilterList.join('\n');
     if (before === after) { return; }
-    this._commandReg = null;
+    this._commandReg = undefined;
     this._onChange();
   }
   set commandFilterList(list_: string | string[]) {
@@ -214,7 +217,7 @@ class NicoChatFilter extends Emitter<{
     let after = tmp.join('\n');
 
     if (before === after) { return; }
-    this._commandReg = null;
+    this._commandReg = undefined;
     this._commandFilterList = tmp;
     this._onChange();
   }
@@ -301,7 +304,7 @@ class NicoChatFilter extends Emitter<{
           );
           return false;
         }
-        commandReg && (m = commandReg.test(nicoChat.cmd));
+        commandReg && (m = commandReg.exec(nicoChat.cmd));
         if (m) {
           window.console.log('%cNG command: "%s" %s %s秒 %s %s', 'background: yellow;',
             m[1],
@@ -331,7 +334,7 @@ class NicoChatFilter extends Emitter<{
         );
     };
   }
-  applyFilter(nicoChatArray) {
+  applyFilter(nicoChatArray: NicoChat[]) {
     let before = nicoChatArray.length;
     if (before < 1) {
       return nicoChatArray;
@@ -340,13 +343,13 @@ class NicoChatFilter extends Emitter<{
     window.console.time(timeKey);
     let filterFunc = this.getFilterFunc();
     let result = nicoChatArray.filter(filterFunc);
-    if (before.length !== result.length && this._removeNgMatchedUser) {
+    if (before !== result.length && this._removeNgMatchedUser) {
       let removedUserIds =
         nicoChatArray.filter(chat => !result.includes(chat)).map(chat => chat.userId);
       result = result.filter(chat => !removedUserIds.includes(chat.userId));
     }
     if (!this.fork0 || !this.fork1 || !this.fork2) {
-      const allows = [];
+      const allows: number[] = [];
       this._fork0 && allows.push(0);
       this._fork1 && allows.push(1);
       this._fork2 && allows.push(2);
@@ -361,7 +364,7 @@ class NicoChatFilter extends Emitter<{
   }
   _buildFilterReg(filterList: string[]) {
     if (filterList.length < 1) {
-      return null;
+      return;
     }
     const escapeRegs = textUtil.escapeRegs;
     let r = filterList.filter(f => f).map(f => escapeRegs(f));
@@ -369,7 +372,7 @@ class NicoChatFilter extends Emitter<{
   }
   _buildFilterPerfectMatchinghReg(filterList: string[]) {
     if (filterList.length < 1) {
-      return null;
+      return;
     }
     const escapeRegs = textUtil.escapeRegs;
     let r = filterList.filter(f => f).map(f => escapeRegs(f));
