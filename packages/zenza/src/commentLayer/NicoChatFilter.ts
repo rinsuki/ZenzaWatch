@@ -1,17 +1,65 @@
 import {Emitter} from '../../../lib/src/Emitter';
 import {textUtil} from '../../../lib/src/text/textUtil';
 import {Config} from '../../../../src/Config';
+import * as _ from "lodash"
+import {NicoChat} from "./NicoChat"
 
 //===BEGIN===
-class NicoChatFilter extends Emitter {
-  constructor(params) {
+
+type SHARED_NG_LEVEL_TYPE = typeof NicoChatFilter.SHARED_NG_LEVEL[keyof typeof NicoChatFilter.SHARED_NG_LEVEL]
+
+export type NicoChatFilterParams = {
+  sharedNgLevel?: SHARED_NG_LEVEL_TYPE
+  removeNgMatchedUser?: boolean
+  enableFilter?: boolean
+  fork0?: boolean
+  fork1?: boolean
+  fork2?: boolean
+  /** 正規表現 */
+  wordRegFilter?: string
+  /** wordRegFilter の正規表現のフラグ */
+  wordRegFilterFlags?: string
+}
+
+class NicoChatFilter extends Emitter<{
+  change: [],
+}> {
+  static SHARED_NG_LEVEL = {
+    NONE: 'NONE',
+    LOW: 'LOW',
+    MID: 'MID',
+    HIGH: 'HIGH',
+    MAX: 'MAX'
+  } as const
+
+  static SHARED_NG_SCORE = {
+    NONE: -99999,//Number.MIN_VALUE,
+    LOW: -10000,
+    MID: -5000,
+    HIGH: -1000,
+    MAX: -1
+  } as const
+
+  _sharedNgLevel: SHARED_NG_LEVEL_TYPE
+  _removeNgMatchedUser: boolean
+  _wordFilterList: string[] = [];
+  _userIdFilterList: string[] = [];
+  _commandFilterList: string[] = [];
+  _fork0: boolean
+  _fork1: boolean
+  _fork2: boolean
+  _enable: boolean
+  _wordReg?: RegExp
+  _wordRegReg?: RegExp
+  _userIdReg?: unknown
+  _commandReg?: unknown
+  _flags?: string
+
+  constructor(params: NicoChatFilterParams) {
     super();
     this._sharedNgLevel = params.sharedNgLevel || NicoChatFilter.SHARED_NG_LEVEL.MID;
     this._removeNgMatchedUser = params.removeNgMatchedUser || false;
 
-    this._wordFilterList = [];
-    this._userIdFilterList = [];
-    this._commandFilterList = [];
     this.wordFilterList = params.wordFilter || '';
     this.userIdFilterList = params.userIdFilter || '';
     this.commandFilterList = params.commandFilter || '';
@@ -20,11 +68,6 @@ class NicoChatFilter extends Emitter {
     this._fork2 = typeof params.fork2 === 'boolean' ? params.fork2 : true;
 
     this._enable = typeof params.enableFilter === 'boolean' ? params.enableFilter : true;
-
-    this._wordReg = null;
-    this._wordRegReg = null;
-    this._userIdReg = null;
-    this._commandReg = null;
 
     this._onChange = _.debounce(this._onChange.bind(this), 50);
 
@@ -74,7 +117,7 @@ class NicoChatFilter extends Emitter {
     this.refresh();
   }
   refresh() { this._onChange(); }
-  addWordFilter(text) {
+  addWordFilter(text?: string) {
     let before = this._wordFilterList.join('\n');
     this._wordFilterList.push((text || '').trim());
     this._wordFilterList = [...new Set(this._wordFilterList)];
@@ -83,11 +126,11 @@ class NicoChatFilter extends Emitter {
     this._wordReg = null;
     this._onChange();
   }
-  set wordFilterList(list) {
+  set wordFilterList(list: string | string[]) {
     list = [...new Set(typeof list === 'string' ? list.trim().split('\n') : list)];
 
     let before = this._wordFilterList.join('\n');
-    let tmp = [];
+    let tmp: string[] = [];
     list.forEach(text => {
       if (!text) { return; }
       tmp.push(text.trim());
@@ -96,7 +139,7 @@ class NicoChatFilter extends Emitter {
     let after = tmp.join('\n');
 
     if (before === after) { return; }
-    this._wordReg = null;
+    this._wordReg = undefined;
     this._wordFilterList = tmp;
     this._onChange();
   }
@@ -104,7 +147,7 @@ class NicoChatFilter extends Emitter {
     return this._wordFilterList;
   }
 
-  setWordRegFilter(source, flags) {
+  setWordRegFilter(source: string, flags?: string) {
     if (this._wordRegReg) {
       if (this._wordRegReg.source === source && this._flags === flags) {
         return;
@@ -112,6 +155,7 @@ class NicoChatFilter extends Emitter {
     }
     try {
       this._wordRegReg = new RegExp(source, flags);
+      this._flags = flags
     } catch (e) {
       window.console.error(e);
       return;
@@ -119,7 +163,7 @@ class NicoChatFilter extends Emitter {
     this._onChange();
   }
 
-  addUserIdFilter(text) {
+  addUserIdFilter(text: string) {
     const before = this._userIdFilterList.join('\n');
     this._userIdFilterList.push(text);
     this._userIdFilterList = [...new Set(this._userIdFilterList)];
@@ -128,11 +172,11 @@ class NicoChatFilter extends Emitter {
     this._userIdReg = null;
     this._onChange();
   }
-  set userIdFilterList(list) {
-    list = [...new Set(typeof list === 'string' ? list.trim().split('\n') : list)];
+  set userIdFilterList(list_: string | string[]) {
+    const list = [...new Set(typeof list_ === 'string' ? list_.trim().split('\n') : list_)];
 
     let before = this._userIdFilterList.join('\n');
-    let tmp = [];
+    let tmp: string[] = [];
     list.forEach(text => {
       if (!text) { return; }
       tmp.push(text.trim());
@@ -148,7 +192,7 @@ class NicoChatFilter extends Emitter {
   get userIdFilterList() {
     return this._userIdFilterList;
   }
-  addCommandFilter(text) {
+  addCommandFilter(text: string) {
     let before = this._commandFilterList.join('\n');
     this._commandFilterList.push(text);
     this._commandFilterList = [...new Set(this._commandFilterList)];
@@ -157,11 +201,11 @@ class NicoChatFilter extends Emitter {
     this._commandReg = null;
     this._onChange();
   }
-  set commandFilterList(list) {
-    list = [...new Set(typeof list === 'string' ? list.trim().split('\n') : list)];
+  set commandFilterList(list_: string | string[]) {
+    const list = [...new Set(typeof list_ === 'string' ? list_.trim().split('\n') : list_)];
 
     let before = this._commandFilterList.join('\n');
-    let tmp = [];
+    let tmp: string[] = [];
     list.forEach(text => {
       if (!text) { return; }
       tmp.push(text.trim());
@@ -187,7 +231,7 @@ class NicoChatFilter extends Emitter {
   get sharedNgLevel() {
     return this._sharedNgLevel;
   }
-  getFilterFunc() {
+  getFilterFunc(): (chat: NicoChat) => boolean {
     if (!this._enable) {
       return () => true;
     }
@@ -312,10 +356,10 @@ class NicoChatFilter extends Emitter {
     window.console.log('NG判定結果: %s/%s', result.length, before);
     return result;
   }
-  isSafe(nicoChat) {
+  isSafe(nicoChat: NicoChat) {
     return (this.getFilterFunc())(nicoChat);
   }
-  _buildFilterReg(filterList) {
+  _buildFilterReg(filterList: string[]) {
     if (filterList.length < 1) {
       return null;
     }
@@ -323,7 +367,7 @@ class NicoChatFilter extends Emitter {
     let r = filterList.filter(f => f).map(f => escapeRegs(f));
     return new RegExp('(' + r.join('|') + ')', 'i');
   }
-  _buildFilterPerfectMatchinghReg(filterList) {
+  _buildFilterPerfectMatchinghReg(filterList: string[]) {
     if (filterList.length < 1) {
       return null;
     }
@@ -336,21 +380,6 @@ class NicoChatFilter extends Emitter {
     this.emit('change');
   }
 }
-
-NicoChatFilter.SHARED_NG_LEVEL = {
-  NONE: 'NONE',
-  LOW: 'LOW',
-  MID: 'MID',
-  HIGH: 'HIGH',
-  MAX: 'MAX'
-};
-NicoChatFilter.SHARED_NG_SCORE = {
-  NONE: -99999,//Number.MIN_VALUE,
-  LOW: -10000,
-  MID: -5000,
-  HIGH: -1000,
-  MAX: -1
-};
 
 //===END===
 export {NicoChatFilter};

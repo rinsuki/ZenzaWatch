@@ -1,7 +1,7 @@
 //===BEGIN===
 
 const textUtil = {
-  secToTime: sec => {
+  secToTime: (sec: number) => {
     return [
       Math.floor(sec / 60).toString().padStart(2, '0'),
       (Math.floor(sec) % 60).toString().padStart(2, '0')
@@ -9,7 +9,7 @@ const textUtil = {
   },
   parseQuery: (query = '') => {
     query = query.startsWith('?') ? query.substr(1) : query;
-    const result = {};
+    const result: {[key: string]: string} = {};
     query.split('&').forEach(item => {
       const sp = item.split('=');
       const key = decodeURIComponent(sp[0]);
@@ -18,11 +18,11 @@ const textUtil = {
     });
     return result;
   },
-  parseUrl: url => {
+  parseUrl: (url: string) => {
     url = url || 'https://unknown.example.com/';
     return Object.assign(document.createElement('a'), {href: url});
   },
-  decodeBase64: str => {
+  decodeBase64: (str: string) => {
     try {
       return decodeURIComponent(
         escape(atob(
@@ -32,14 +32,14 @@ const textUtil = {
       return '';
     }
   },
-  encodeBase64: str => {
+  encodeBase64: (str: string) => {
     try {
       return btoa(unescape(encodeURIComponent(str)));
     } catch(e) {
       return '';
     }
   },
-  escapeHtml: text => {
+  escapeHtml: (text: string) => {
     const map = {
       '&': '&amp;',
       '\x27': '&#39;',
@@ -47,9 +47,9 @@ const textUtil = {
       '<': '&lt;',
       '>': '&gt;'
     };
-    return text.replace(/[&"'<>]/g, char => map[char]);
+    return text.replace(/[&"'<>]/g, char => map[char as keyof typeof map]);
   },
-  unescapeHtml: text => {
+  unescapeHtml: (text: string) => {
     const map = {
       '&amp;': '&',
       '&#39;': '\x27',
@@ -57,12 +57,12 @@ const textUtil = {
       '&lt;': '<',
       '&gt;': '>'
     };
-    return text.replace(/(&amp;|&#39;|&quot;|&lt;|&gt;)/g, char => map[char]);
+    return text.replace(/(&amp;|&#39;|&quot;|&lt;|&gt;)/g, char => map[char as keyof typeof map]);
   },
   // 基本的に動画タイトルはエスケープされている。
   // だが、なんかたまにいいかげんなデータがあるし、本当に信用できるか？
   // そこで、全角に置き換えてごますんだ！
-  escapeToZenkaku: text => {
+  escapeToZenkaku: (text: string) => {
     const map = {
       '&': '＆',
       '\'': '’',
@@ -70,15 +70,15 @@ const textUtil = {
       '<': '＜',
       '>': '＞'
     };
-    return text.replace(/["'<>]/g, char => map[char]);
+    return text.replace(/["'<>]/g, char => map[char as keyof typeof map]);
   },
-  escapeRegs: text => {
+  escapeRegs: (text: string) => {
     const match = /[\\^$.*+?()[\]{}|]/g;
     // return text.replace(/[\\\*\+\.\?\{\}\(\)\[\]\^\$\-\|\/]/g, char => {
     return text.replace(match, '\\$&');
   },
   // 漢数字のタイトルのソートに使うだけなので百とか千とか考えない
-  convertKansuEi: text => {
+  convertKansuEi: (text: string) => {
     // `〇話,一話,二話,三話,四話,五話,六話,七話,八話,九話,十話,十一話,十二話,十三話,
     // 十四話,十五話,十六話,十七話,十八話,十九話,二十話,二十一話,二十二話,二十三話,二十四話,二十五話,二十六話`
     // .split(',').map(c => convertKansuEi(c).replace(/([0-9]{1,9})/g, m =>  m.padStart(3, '0'))).sort()
@@ -96,11 +96,11 @@ const textUtil = {
       '九': '9',
       // '十': 'Ａ', '拾': 'Ａ'
     };
-    text = text.replace(match, char => map[char]);
-    text = text.replace(/([1-9]?)[十拾]([0-9]?)/g, (n, a, b) => (a && b) ? `${a}${b}` : (a ? a * 10 : 10 + b * 1));
+    text = text.replace(match, char => map[char as keyof typeof map]);
+    text = text.replace(/([1-9]?)[十拾]([0-9]?)/g, (n, a, b) => (a && b) ? `${a}${b}` : (a ? a * 10 : 10 + b * 1).toString());
     return text;
   },
-  dateToString: date => {
+  dateToString: (date: Date | string | number) => {
     if (typeof date === 'string') {
       const origDate = date;
       date = date.replace(/\//g, '-');
@@ -108,9 +108,9 @@ const textUtil = {
       const m = /^(\d+-\d+-\d+) (\d+):(\d+):(\d+)/.exec(date);
       if (m) {
         date = new Date(m[1]);
-        date.setHours(m[2]);
-        date.setMinutes(m[3]);
-        date.setSeconds(m[4]);
+        date.setHours(parseInt(m[2], 10));
+        date.setMinutes(parseInt(m[3], 10));
+        date.setSeconds(parseInt(m[4], 10));
       } else {
         const t = Date.parse(date);
         if (isNaN(t)) {
@@ -135,7 +135,7 @@ const textUtil = {
       ].map(n => n.toString().padStart(2, '0'));
     return `${yy}/${mm}/${dd} ${h}:${m}:${s}`;
   },
-  isValidJson: data => {
+  isValidJson: (data: string) => {
     try {
       JSON.parse(data);
       return true;
@@ -143,10 +143,10 @@ const textUtil = {
       return false;
     }
   },
-  toRgba: (c, alpha = 1) =>
+  toRgba: (c: string, alpha = 1) =>
     `rgba(${parseInt(c.substr(1, 2), 16)}, ${parseInt(c.substr(3, 2), 16)}, ${parseInt(c.substr(5, 2), 16)}, ${alpha})`,
-  snakeToCamel: snake => snake.replace(/-./g, s => s.charAt(1).toUpperCase()),
-  camelToSnake: (camel, separator = '_') => camel.replace(/([A-Z])/g, s =>  separator + s.toLowerCase())
+  snakeToCamel: (snake: string) => snake.replace(/-./g, s => s.charAt(1).toUpperCase()),
+  camelToSnake: (camel: string, separator = '_') => camel.replace(/([A-Z])/g, s =>  separator + s.toLowerCase())
 };
 
 //===END===

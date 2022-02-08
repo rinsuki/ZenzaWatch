@@ -20,8 +20,26 @@ import {ClassList} from '../../../lib/src/dom/ClassListWrapper';
  *
  * DOM的に隔離されたiframeの領域内で描画する
  */
+
+export type NicoCommentCss3PlayerViewParams = {
+  viewModel: NicoChatViewModel,
+  playbackRate?: number,
+}
+
 class NicoCommentCss3PlayerView extends Emitter {
-  constructor(params) {
+  _viewModel: NicoChatViewModel
+  _lastCurrentTime = 0
+  _isShow = true
+  _aspectRatio = 9 / 16
+  _inViewTable = new Set()
+  _inSlotTable = new Set()
+  _domTable = new Map()
+  _playbackRate: number
+  _isPaused: undefined
+  _retryGetIframeCount = 0
+  _config = Config.namespace("commentLayer")
+
+  constructor(params: NicoCommentCss3PlayerViewParams) {
     super();
 
     this._viewModel = params.viewModel;
@@ -29,19 +47,7 @@ class NicoCommentCss3PlayerView extends Emitter {
     this._viewModel.on('setData', this._onSetData.bind(this));
     this._viewModel.on('currentTime', this._onCurrentTime.bind(this));
 
-    this._lastCurrentTime = 0;
-    this._isShow = true;
-
-    this._aspectRatio = 9 / 16;
-
-    this._inViewTable = new Set();
-    this._inSlotTable = new Set();
-    this._domTable = new Map();
     this._playbackRate = params.playbackRate || 1.0;
-
-    this._isPaused = undefined;
-
-    this._retryGetIframeCount = 0;
 
     console.log('NicoCommentCss3PlayerView playbackRate', this._playbackRate);
 
@@ -59,9 +65,9 @@ class NicoCommentCss3PlayerView extends Emitter {
         this.onResize();
       }
     });
-    global.debug.css3Player = this;
+    // global.debug.css3Player = this;
   }
-  _initializeView (params, retryCount) {
+  _initializeView (params: NicoCommentCss3PlayerViewParams, retryCount: number) {
     if (retryCount === 0) {
       self.console.time('initialize NicoCommentCss3PlayerView');
     }
@@ -82,12 +88,12 @@ class NicoCommentCss3PlayerView extends Emitter {
 
 
     const onload = () => {
-      let win, doc;
+      let win: Window, doc: Document;
       iframe.onload = null;
       if (env.isChrome()) {iframe.removeAttribute('srcdoc');}
       try {
-        win = iframe.contentWindow;
-        doc = iframe.contentWindow.document;
+        win = iframe.contentWindow!;
+        doc = iframe.contentWindow!.document;
       } catch (e) {
         self.console.error(e);
         self.console.log('変な広告に乗っ取られました');
@@ -234,7 +240,7 @@ class NicoCommentCss3PlayerView extends Emitter {
     }
   }
   get playbackRate() { return this._playbackRate; }
-  setAspectRatio (ratio) {
+  setAspectRatio (ratio: number) {
     this._aspectRatio = ratio;
     this._adjust();
   }

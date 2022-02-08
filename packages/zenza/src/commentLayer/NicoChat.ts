@@ -3,8 +3,60 @@
  * コメントの最小単位
  *
  */
-function NicoChatInitFunc() {
+
 class NicoChat {
+   static id = 1000000;
+
+   static SIZE = {
+    BIG: 'big',
+    MEDIUM: 'medium',
+    SMALL: 'small'
+  } as const
+   static TYPE = {
+    TOP: 'ue',
+    NAKA: 'naka',
+    BOTTOM: 'shita'
+  } as const
+  static DURATION = {
+    TOP: 3 - 0.1,
+    NAKA: 4,
+    BOTTOM: 3 - 0.1
+  } as const
+  
+  static _CMD_DURATION = /[@＠]([0-9.]+)/;
+  static _CMD_REPLACE = /(ue|shita|sita|big|small|ender|full|[ ])/g;
+  static _COLOR_MATCH = /(#[0-9a-f]+)/i;
+  static _COLOR_NAME_MATCH = /([a-z]+)/i;
+  static COLORS = {
+    'red': '#FF0000',
+    'pink': '#FF8080',
+    'orange': '#FFC000',
+    'yellow': '#FFFF00',
+    'green': '#00FF00',
+    'cyan': '#00FFFF',
+    'blue': '#0000FF',
+    'purple': '#C000FF',
+    'black': '#000000',
+
+    'white2': '#CCCC99',
+    'niconicowhite': '#CCCC99',
+    'red2': '#CC0033',
+    'truered': '#CC0033',
+    'pink2': '#FF33CC',
+    'orange2': '#FF6600',
+    'passionorange': '#FF6600',
+    'yellow2': '#999900',
+    'madyellow': '#999900',
+    'green2': '#00CC66',
+    'elementalgreen': '#00CC66',
+    'cyan2': '#00CCCC',
+    'blue2': '#3399FF',
+    'marineblue': '#3399FF',
+    'purple2': '#6633CC',
+    'nobleviolet': '#6633CC',
+    'black2': '#666666'
+  } as const
+  
   static createBlank(options = {}) {
     return Object.assign({
       text: '',
@@ -36,18 +88,18 @@ class NicoChat {
     }, options);
   }
 
-  static create(data, options = {}) {
+  static create(data: any, options = {}) {
     return new NicoChat(NicoChat.createBlank(data), options);
   }
 
-  static createFromChatElement(elm, options = {}) {
+  static createFromChatElement(elm: HTMLElement, options = {}) {
     const data = {
       text: elm.textContent,
-      date: parseInt(elm.getAttribute('date'), 10) || Math.floor(Date.now() / 1000),
+      date: parseInt(elm.getAttribute('date')!, 10) || Math.floor(Date.now() / 1000),
       cmd: elm.getAttribute('mail') || '',
       isPremium: elm.getAttribute('premium') === '1',
       userId: elm.getAttribute('user_id'),
-      vpos: parseInt(elm.getAttribute('vpos'), 10),
+      vpos: parseInt(elm.getAttribute('vpos')!, 10),
       deleted: elm.getAttribute('deleted') === '1',
       isMine: elm.getAttribute('mine') === '1',
       isUpdating: elm.getAttribute('updating') === '1',
@@ -55,18 +107,18 @@ class NicoChat {
       fork: parseInt(elm.getAttribute('fork') || '0', 10),
       leaf: parseInt(elm.getAttribute('leaf') || '-1', 10),
       no: parseInt(elm.getAttribute('no') || '0', 10),
-      thread: parseInt(elm.getAttribute('thread'), 10)
+      thread: parseInt(elm.getAttribute('thread')!, 10)
     };
     return new NicoChat(data, options);
   }
 
 
-  static parseCmd(command, isFork = false, props = {}) {
+  static parseCmd(command: string, isFork = false, props: any = {}) {
     const tmp = command.toLowerCase().split(/[\x20\xA0\u3000\t\u2003\s]+/);
-    const cmd = {};
+    const cmd: {[key: string]: string | boolean} = {};
     for (const c of tmp) {
-      if (NicoChat.COLORS[c]) {
-        cmd.COLOR = NicoChat.COLORS[c];
+      if (c in NicoChat.COLORS) {
+        cmd.COLOR = NicoChat.COLORS[c as keyof typeof NicoChat.COLORS];
       } else if (NicoChat._COLOR_MATCH.test(c)) {
         cmd.COLOR = c;
       } else if (isFork && NicoChat._CMD_DURATION.test(c)) {
@@ -114,7 +166,7 @@ class NicoChat {
 
     if (cmd.duration) {
       props.hasDurationSet = true;
-      props.duration = Math.max(0.01, parseFloat(cmd.duration, 10));
+      props.duration = Math.max(0.01, parseFloat(cmd.duration as string));
     }
 
     if (cmd.mincho) {
@@ -135,7 +187,7 @@ class NicoChat {
     return props;
   }
 
-  static SORT_FUNCTION(a, b) {
+  static SORT_FUNCTION(a: NicoChat, b: NicoChat) {
     const av = a.vpos, bv = b.vpos;
     if (av !== bv) {
       return av - bv;
@@ -144,9 +196,16 @@ class NicoChat {
     }
   }
 
-  constructor(data, options = {}) {
+  props: any
+
+  constructor(data: any, options: {
+    format?: "bulk",
+    mainThreadId?: string,
+    videoDuration?: number,
+  } = {}) {
     options = Object.assign({videoDuration: 0x7FFFFF, mainThreadId: 0, format: ''}, options);
-    const props = this.props = {};
+    this.props = {};
+    const props = this.props
     props.id = `chat${NicoChat.id++}`;
     props.currentTime = 0;
 
@@ -194,6 +253,7 @@ class NicoChat {
     }
 
     // durationを超える位置にあるコメントを詰める vposはセンチ秒なので気をつけ
+    options.videoDuration = options.videoDuration ?? NaN
     const maxv =
       props.isNicoScript ?
         Math.min(props.vpos, options.videoDuration * 100) :
@@ -317,62 +377,8 @@ class NicoChat {
   get opacity() {return this.props.opacity;}
   get valhalla() {return this.props.valhalla || 0; }
 }
-NicoChat.id = 1000000;
-
-NicoChat.SIZE = {
-  BIG: 'big',
-  MEDIUM: 'medium',
-  SMALL: 'small'
-};
-NicoChat.TYPE = {
-  TOP: 'ue',
-  NAKA: 'naka',
-  BOTTOM: 'shita'
-};
-NicoChat.DURATION = {
-  TOP: 3 - 0.1,
-  NAKA: 4,
-  BOTTOM: 3 - 0.1
-};
-
-NicoChat._CMD_DURATION = /[@＠]([0-9.]+)/;
-NicoChat._CMD_REPLACE = /(ue|shita|sita|big|small|ender|full|[ ])/g;
-NicoChat._COLOR_MATCH = /(#[0-9a-f]+)/i;
-NicoChat._COLOR_NAME_MATCH = /([a-z]+)/i;
-NicoChat.COLORS = {
-  'red': '#FF0000',
-  'pink': '#FF8080',
-  'orange': '#FFC000',
-  'yellow': '#FFFF00',
-  'green': '#00FF00',
-  'cyan': '#00FFFF',
-  'blue': '#0000FF',
-  'purple': '#C000FF',
-  'black': '#000000',
-
-  'white2': '#CCCC99',
-  'niconicowhite': '#CCCC99',
-  'red2': '#CC0033',
-  'truered': '#CC0033',
-  'pink2': '#FF33CC',
-  'orange2': '#FF6600',
-  'passionorange': '#FF6600',
-  'yellow2': '#999900',
-  'madyellow': '#999900',
-  'green2': '#00CC66',
-  'elementalgreen': '#00CC66',
-  'cyan2': '#00CCCC',
-  'blue2': '#3399FF',
-  'marineblue': '#3399FF',
-  'purple2': '#6633CC',
-  'nobleviolet': '#6633CC',
-  'black2': '#666666'
-};
-  return NicoChat;
-} // worker用
-const NicoChat = NicoChatInitFunc();
 //===END===
-export {NicoChat, NicoChatInitFunc};
+export {NicoChat};
 
 //   getDuration() {return this.props.duration;}
 //   // hasDurationSet () {return !!this.props.hasDurationSet;}

@@ -28,8 +28,19 @@ import {NicoCommentCss3PlayerView} from '../packages/zenza/src/commentLayer/Nico
 //@require NicoChatCss3View
 //@require NicoChatFilter
 
-class NicoCommentPlayer extends Emitter {
-  constructor(params) {
+class NicoCommentPlayer extends Emitter<{
+  "parsed": [],
+  "change": [],
+}, {
+  "GetReady!": []
+}> {
+  _model: NicoComment
+  _viewModel: NicoCommentViewModel
+  _view: NicoCommentCss3PlayerView
+
+  constructor(params: {
+    playbackRate?: number,
+  }) {
     super();
 
     this._model = new NicoComment(params);
@@ -48,17 +59,19 @@ class NicoCommentPlayer extends Emitter {
     this._model.on('command', this._onCommand.bind(this));
     global.emitter.on('commentLayoutChange', onCommentChange);
 
-    global.debug.nicoCommentPlayer = this;
+    // global.debug.nicoCommentPlayer = this;
     this.emitResolve('GetReady!');
   }
-  setComment(data, options) {
+  setComment(data: string | Element | {}, options: {
+    format?: "json"
+  }) {
     if (typeof data === 'string') {
       if (options.format === 'json') {
         this._model.setData(JSON.parse(data), options);
       } else {
         this._model.setXml(new DOMParser().parseFromString(data, 'text/xml'), options);
       }
-    } else if (typeof data.getElementsByTagName === 'function') {
+    } else if ("getElementsByTagName" in data && typeof data.getElementsByTagName === 'function') {
       this._model.setXml(data, options);
     } else {
       this._model.setData(data, options);
@@ -118,7 +131,7 @@ class NicoCommentPlayer extends Emitter {
     if (this._view) { return this._view.playbackRate; }
     return 1;
   }
-  setAspectRatio(ratio) {
+  setAspectRatio(ratio: number) {
     this._view.setAspectRatio(ratio);
   }
   appendTo(node) {

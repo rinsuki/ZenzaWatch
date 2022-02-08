@@ -28,7 +28,9 @@ const ZenzaWatch = {
     Handler
   },
   init: {},
-  emitter: new Emitter(),
+  emitter: new Emitter<{
+    commentLayoutChange: [],
+  }>(),
   ready: false,
   state: {},
   version: '1.0.0',
